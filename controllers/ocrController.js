@@ -23,15 +23,17 @@ export const runOCR = async (req, res) => {
     });
     
     const filePath = req.file.path;
+    const fileBuffer = fs.readFileSync(filePath);
     
     const formData = new FormData();
-    formData.append("file", fs.createReadStream(filePath));
+    formData.append("file", fileBuffer, req.file.originalname);
     formData.append("language", "eng");
     
     console.log("Sending file:", {
       filename: req.file.originalname,
       mimetype: req.file.mimetype,
-      size: req.file.size
+      size: req.file.size,
+      bufferSize: fileBuffer.length
     });
 
     console.log("Sending to RobotPDF API with keys:", {
