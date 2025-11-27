@@ -23,28 +23,15 @@ export const runOCR = async (req, res) => {
     });
     
     const filePath = req.file.path;
-    const fileBuffer = fs.readFileSync(filePath);
-    
-    // Ensure correct mimetype for PDFs
-    let mimeType = req.file.mimetype;
-    if (req.file.originalname.toLowerCase().endsWith('.pdf') && mimeType !== 'application/pdf') {
-      mimeType = 'application/pdf';
-    }
     
     const formData = new FormData();
-    formData.append("file", fileBuffer, {
-      filename: req.file.originalname,
-      contentType: mimeType,
-      knownLength: fileBuffer.length
-    });
+    formData.append("file", fs.createReadStream(filePath));
     formData.append("language", "eng");
     
     console.log("Sending file:", {
       filename: req.file.originalname,
-      contentType: mimeType,
-      size: fileBuffer.length,
-      bufferType: typeof fileBuffer,
-      isBuffer: Buffer.isBuffer(fileBuffer)
+      mimetype: req.file.mimetype,
+      size: req.file.size
     });
 
     console.log("Sending to RobotPDF API with keys:", {
