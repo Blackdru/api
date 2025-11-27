@@ -23,12 +23,29 @@ export const runOCR = async (req, res) => {
     });
     
     const filePath = req.file.path;
+    const fileBuffer = fs.readFileSync(filePath);
+    
+    // Ensure correct mimetype for PDFs
+    let mimeType = req.file.mimetype;
+    if (req.file.originalname.toLowerCase().endsWith('.pdf') && mimeType !== 'application/pdf') {
+      mimeType = 'application/pdf';
+    }
+    
     const formData = new FormData();
-    formData.append("file", fs.createReadStream(filePath), {
+    formData.append("file", fileBuffer, {
       filename: req.file.originalname,
-      contentType: req.file.mimetype
+      contentType: mimeType,
+      knownLength: fileBuffer.length
     });
     formData.append("language", "eng");
+    
+    console.log("Sending file:", {
+      filename: req.file.originalname,
+      contentType: mimeType,
+      size: fileBuffer.length,
+      bufferType: typeof fileBuffer,
+      isBuffer: Buffer.isBuffer(fileBuffer)
+    });
 
     console.log("Sending to RobotPDF API with keys:", {
       hasKey: !!process.env.API_KEY,
@@ -36,15 +53,19 @@ export const runOCR = async (req, res) => {
       keyPrefix: process.env.API_KEY?.substring(0, 10)
     });
     
+    const headers = {
+      "x-api-key": process.env.API_KEY,
+      "x-api-secret": process.env.API_SECRET,
+      ...formData.getHeaders()
+    };
+    
+    console.log("Request headers:", Object.keys(headers));
+    
     const response = await axios.post(
       "https://api.robotpdf.com/api/v1/ocr",
       formData,
       {
-        headers: {
-          "x-api-key": process.env.API_KEY,
-          "x-api-secret": process.env.API_SECRET,
-          ...formData.getHeaders()
-        },
+        headers,
         timeout: 120000,
         maxContentLength: Infinity,
         maxBodyLength: Infinity
