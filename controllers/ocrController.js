@@ -86,8 +86,10 @@ export const runOCR = async (req, res) => {
     // Provide helpful message for common errors
     if (errorMessage.includes("OCR failed for all image enhancement versions")) {
       errorMessage = "Unable to extract text from this PDF. The document may be empty, corrupted, or contain only images without readable text.";
-    } else if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT") || errorMessage.includes("UND_ERR_HEADERS_TIMEOUT")) {
-      errorMessage = "Request timed out. The file may be too large or the server is busy. Please try again.";
+    } else if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT") || errorMessage.includes("UND_ERR_HEADERS_TIMEOUT") || error.response?.status === 504) {
+      errorMessage = "Request timed out. The file may be too large or the RobotPDF server is busy. Please try with a smaller file or try again later.";
+    } else if (error.response?.status === 503) {
+      errorMessage = "RobotPDF service is temporarily unavailable. Please try again later.";
     }
     
     res.status(error.response?.status || 500).json({
