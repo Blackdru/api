@@ -15,11 +15,14 @@ export const splitPDF = async (req, res) => {
       return res.status(400).json({ error: "File missing!" });
     }
 
-    const { pages } = req.body;
+    const { pages, split_mode } = req.body;
     
     if (!pages) {
       return res.status(400).json({ error: "Pages parameter is required!" });
     }
+
+    // split_mode: 'single' = all pages in one PDF, 'individual' = separate PDF per page in ZIP
+    const splitMode = split_mode || 'single';
 
     console.log("File received:", {
       name: req.file.originalname,
@@ -28,6 +31,7 @@ export const splitPDF = async (req, res) => {
       path: req.file.path
     });
     console.log("Pages to extract:", pages);
+    console.log("Split mode:", splitMode);
     
     const filePath = req.file.path;
     const fileBuffer = fs.readFileSync(filePath);
@@ -35,6 +39,11 @@ export const splitPDF = async (req, res) => {
     const formData = new FormData();
     formData.append("file", fileBuffer, req.file.originalname);
     formData.append("pages", pages);
+    
+    // Only add split_mode if individual (API default is single PDF)
+    if (splitMode === 'individual') {
+      formData.append("split_mode", "individual");
+    }
     
     console.log("Sending to RobotPDF Split API...");
     
@@ -64,6 +73,7 @@ export const splitPDF = async (req, res) => {
     
     const contentType = response.headers['content-type'] || '';
     const originalName = req.file.originalname.replace('.pdf', '');
+    const isZipMode = splitMode === 'individual';
     let result;
     
     if (contentType.includes('application/json')) {
@@ -72,9 +82,10 @@ export const splitPDF = async (req, res) => {
       const apiData = jsonData.data || jsonData;
       result = {
         fileBase64: apiData.file_base64 || "",
-        fileName: `${originalName}_split.zip`,
+        fileName: isZipMode ? `${originalName}_split.zip` : `${originalName}_split.pdf`,
         pageCount: apiData.page_count || 0,
         fileSize: apiData.file_size || 0,
+        isZip: isZipMode,
       };
     } else {
       // API returned binary data directly (PDF or ZIP)
@@ -87,6 +98,7 @@ export const splitPDF = async (req, res) => {
         fileName: isPdf ? `${originalName}_split.pdf` : `${originalName}_split.zip`,
         pageCount: 0, // Not available in binary response
         fileSize: fileBuffer.length,
+        isZip: !isPdf || isZipMode,
       };
     }
     
