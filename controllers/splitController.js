@@ -51,27 +51,47 @@ export const splitPDF = async (req, res) => {
         headers,
         timeout: 120000,
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
+        maxBodyLength: Infinity,
+        responseType: 'arraybuffer' // Get raw binary data
       }
     );
 
-    console.log("RobotPDF Split response received, page_count:", response.data?.data?.page_count);
+    console.log("RobotPDF Split response received");
+    console.log("Response content-type:", response.headers['content-type']);
     
     // Clean up uploaded file
     fs.unlinkSync(filePath);
     
-    // Extract result from response - API returns base64 data
-    const apiData = response.data.data || response.data;
-    // The API returns a ZIP file containing individual split PDFs
+    const contentType = response.headers['content-type'] || '';
     const originalName = req.file.originalname.replace('.pdf', '');
-    const result = {
-      fileBase64: apiData.file_base64 || "",
-      fileName: `${originalName}_split.zip`,
-      pageCount: apiData.page_count || 0,
-      fileSize: apiData.file_size || 0,
-    };
+    let result;
+    
+    if (contentType.includes('application/json')) {
+      // API returned JSON (possibly with base64)
+      const jsonData = JSON.parse(response.data.toString());
+      const apiData = jsonData.data || jsonData;
+      result = {
+        fileBase64: apiData.file_base64 || "",
+        fileName: `${originalName}_split.zip`,
+        pageCount: apiData.page_count || 0,
+        fileSize: apiData.file_size || 0,
+      };
+    } else {
+      // API returned binary data directly (PDF or ZIP)
+      const fileBuffer = Buffer.from(response.data);
+      const fileBase64 = fileBuffer.toString('base64');
+      const isPdf = contentType.includes('application/pdf');
+      
+      result = {
+        fileBase64: fileBase64,
+        fileName: isPdf ? `${originalName}_split.pdf` : `${originalName}_split.zip`,
+        pageCount: 0, // Not available in binary response
+        fileSize: fileBuffer.length,
+      };
+    }
     
     console.log("Sending result with base64 length:", result.fileBase64?.length);
+    console.log("File size:", result.fileSize);
 
     res.status(200).json(result);
   } catch (error) {
