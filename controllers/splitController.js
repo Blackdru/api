@@ -17,12 +17,16 @@ export const splitPDF = async (req, res) => {
 
     const { pages, split_mode } = req.body;
     
-    if (!pages) {
-      return res.status(400).json({ error: "Pages parameter is required!" });
-    }
-
     // split_mode: 'single' = all pages in one PDF, 'individual' = separate PDF per page in ZIP
     const splitMode = split_mode || 'single';
+    
+    // Check if this is an "all pages" request
+    const isAllPages = pages === 'all' || !pages;
+    
+    // Pages is required unless it's an "all pages" split to individual PDFs
+    if (!isAllPages && !pages) {
+      return res.status(400).json({ error: "Pages parameter is required!" });
+    }
 
     console.log("File received:", {
       name: req.file.originalname,
@@ -30,15 +34,22 @@ export const splitPDF = async (req, res) => {
       mimetype: req.file.mimetype,
       path: req.file.path
     });
-    console.log("Pages to extract:", pages);
+    console.log("Pages to extract:", pages || "all");
     console.log("Split mode:", splitMode);
+    console.log("Is all pages:", isAllPages);
     
     const filePath = req.file.path;
     const fileBuffer = fs.readFileSync(filePath);
     
     const formData = new FormData();
     formData.append("file", fileBuffer, req.file.originalname);
-    formData.append("pages", pages);
+    
+    // For "all pages" mode, we need to send "all" or let the API handle it
+    if (isAllPages) {
+      formData.append("pages", "all");
+    } else {
+      formData.append("pages", pages);
+    }
     
     // Only add split_mode if individual (API default is single PDF)
     if (splitMode === 'individual') {
@@ -73,7 +84,7 @@ export const splitPDF = async (req, res) => {
     
     const contentType = response.headers['content-type'] || '';
     const originalName = req.file.originalname.replace('.pdf', '');
-    const isZipMode = splitMode === 'individual';
+    const isZipMode = splitMode === 'individual' || isAllPages;
     let result;
     
     if (contentType.includes('application/json')) {
