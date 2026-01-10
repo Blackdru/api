@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import ocrRoutes from "./routes/ocrRoutes.js";
 import splitRoutes from "./routes/splitRoutes.js";
 import mergeRoutes from "./routes/mergeRoutes.js";
+import imgtopdfRoutes from "./routes/imgtopdfRoutes.js";
+import pdftoexcelRoutes from "./routes/pdftoexcelRoutes.js";
 
 dotenv.config();
 
@@ -15,6 +17,8 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use("/api/ocr", ocrRoutes);
 app.use("/api/split", splitRoutes);
 app.use("/api/merge", mergeRoutes);
+app.use("/api/imgtopdf", imgtopdfRoutes);
+app.use("/api/pdftoxl", pdftoexcelRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
